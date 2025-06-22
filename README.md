@@ -7,6 +7,12 @@ a lot of things are broken or unusable (such as gpu drivers which you cant actua
 # how to use
 type `make`
 
+## sysrq
+LemonOS uses super + sysrq + (character) to call a sysrq, an example is super + sysrq + i (print CPU info)
+
+## keyboard layouts
+you can press the meta key to switch between keyboard layers (currently layer 1 is qwerty english and layer 2 is qwerty greek)
+
 # how to compile your own binaries
 get `https://github.com/lemonorangelime/lemonos-toolchain` then do `i386-gcc-lemonos FILE.c -o MY_BINARY`
 
