@@ -1,0 +1,63 @@
+#pragma once
+
+enum {
+	SB16_FM_STATUS  = 0x00,
+	SB16_FM_RAP     = 0x00,
+	SB16_FM_DATA    = 0x01,
+	SB16_ADVANCED_FM_STATUS = 0x02,
+	SB16_ADVANCED_FM_RAP    = 0x02,
+	SB16_ADVANCED_FM_DATA   = 0x03,
+	SB16_MIXER_RAP  = 0x04,
+	SB16_MIXER_DATA = 0x05,
+	SB16_RESET      = 0x06,
+	SB16_READ       = 0x0a,
+	SB16_WRITE      = 0x0c,
+	SB16_CMD        = 0x0c,
+	SB16_STATUS     = 0x0e,
+	SB16_IRQ_ACK    = 0x0f,
+
+	SB16_CD_CMD     = 0x10,
+	SB16_CD_STATUS  = 0x10,
+	SB16_CD_RESET   = 0x10,
+	SB16_CD_ENABLE  = 0x10,
+};
+
+enum {
+	SB16_CMD_TIME_CONSTANT    = 0x40,
+	SB16_CMD_SAMPLE_RATE      = 0x41,
+	SB16_CMD_MIC_SAMPLE_RATE  = 0x42,
+	SB16_CMD_TRANSFER_SIZE    = 0x48,
+	SB16_CMD_PAUSE            = 0x80,
+	SB16_CMD_SET_MONO         = 0xa0,
+	SB16_CMD_SET_STEREO       = 0xa8,
+	SB16_CMD_16BIT_PCM        = 0xb0,
+	SB16_CMD_8BIT_PCM         = 0xc0,
+	SB16_CMD_STOP_CHANNEL8    = 0xd0,
+	SB16_CMD_ON               = 0xd1,
+	SB16_CMD_OFF              = 0xd3,
+	SB16_CMD_RESUME_CHANNEL8  = 0xd4,
+	SB16_CMD_STOP_CHANNEL16   = 0xd5,
+	SB16_CMD_RESUME_CHANNEL16 = 0xd6,
+	SB16_CMD_STATUS           = 0xd8,
+	SB16_CMD_GET_VERSION      = 0xe1,
+};
+
+enum {
+	SB16_VERSION_V1   = 0x01,
+	SB16_VERSION_V2   = 0x02,
+	SB16_VERSION_VPRO = 0x03,
+	SB16_VERSION_V16  = 0x04,
+};
+
+enum {
+	SB16_MIXER_RESET      = 0x00,
+	SB16_MIXER_MIC_VOLUME = 0x0a,
+	SB16_MIXER_VOLUME     = 0x22,
+	SB16_MIXER_IRQ_LINE   = 0x80,
+};
+
+#define SB16_DMA 0x00718000
+#define SB16_DMA_SIZE 0x33ae
+// 0x3fff
+
+void sb16_init();

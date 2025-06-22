@@ -1,0 +1,105 @@
+#pragma once
+
+#include <stdint.h>
+
+#define TPM_ADDRESS 0xfed40000
+
+enum {
+	TPM_REG_ACCESS    = 0x0000,
+	TPM_REG_STATUS    = 0x0018,
+	TPM_REG_DATA_FIFO = 0x0024,
+	TPM_REG_VID       = 0x0f00,
+	TPM_REG_RID       = 0x0f04,
+};
+
+enum {
+	TPM_TAG_CMD = 0xc1,
+};
+
+enum {
+	TPM_CMD_STARTUP     = 0x0099,
+	TPM_CMD_GETCAPS     = 0x0065,
+	TPM_CMD_RSA_ENCRYPT = 0x0174,
+	TPM_CMD_GETRAND     = 0x017b,
+	TPM_CMD_HASH        = 0x017d,
+	TPM_CMD_GETTIME     = 0x0181,
+};
+
+enum {
+	TPM_ALGO_ERROR     = 0x0000,
+	TPM_ALGO_RSA       = 0x0001,
+	TPM_ALGO_TDES      = 0x0003,
+	TPM_ALGO_SHA1      = 0x0004,
+	TPM_ALGO_HMAC      = 0x0005,
+	TPM_ALGO_AES       = 0x0006,
+	TPM_ALGO_MGF1      = 0x0007,
+	TPM_ALGO_KEYED     = 0x0008,
+	TPM_ALGO_XOR       = 0x000a,
+	TPM_ALGO_SHA256    = 0x000b,
+	TPM_ALGO_SHA384    = 0x000c,
+	TPM_ALGO_SHA512    = 0x000d,
+	TPM_ALGO_NULL      = 0x0010,
+	TPM_ALGO_SM3       = 0x0012,
+	TPM_ALGO_SM4       = 0x0013,
+	TPM_ALGO_RSASSA    = 0x0014,
+	TPM_ALGO_RSAES     = 0x0015,
+	TPM_ALGO_RSAPSS    = 0x0016,
+	TPM_ALGO_OAEP      = 0x0017,
+	TPM_ALGO_ECDSA     = 0x0018,
+	TPM_ALGO_ECDH      = 0x0019,
+	TPM_ALGO_ECDAA     = 0x001a,
+	TPM_ALGO_SM2       = 0x001b,
+	TPM_ALGO_ECSCHNORR = 0x001c,
+	TPM_ALGO_ECMQV     = 0x001d,
+	TPM_ALGO_KDF1_56a  = 0x0020,
+	TPM_ALGO_KDF2      = 0x0021,
+	TPM_ALGO_KDF1_108  = 0x0022,
+	TPM_ALGO_ECC       = 0x0023,
+	TPM_ALGO_SYM       = 0x0025,
+	TPM_ALGO_CAMELLIA  = 0x0026,
+	TPM_ALGO_SHA3_256  = 0x0027,
+	TPM_ALGO_SHA3_384  = 0x0028,
+	TPM_ALGO_SHA3_512  = 0x0029,
+	TPM_ALGO_CMAC      = 0x003f,
+	TPM_ALGO_CTR       = 0x0040,
+	TPM_ALGO_OFB       = 0x0041,
+	TPM_ALGO_CBC       = 0x0042,
+	TPM_ALGO_CFB       = 0x0043,
+	TPM_ALGO_ECB       = 0x0044,
+	TPM_ALGO_CCM       = 0x0050,
+	TPM_ALGO_GCM       = 0x0051,
+	TPM_ALGO_KW        = 0x0052,
+	TPM_ALGO_KWP       = 0x0053,
+	TPM_ALGO_EAX       = 0x0054,
+	TPM_ALGO_EDDSA     = 0x0060,
+};
+
+enum {
+	TPM_ACCESS_ESTABLISH = 0b00000001,
+	TPM_ACCESS_REQUEST   = 0b00000010,
+	TPM_ACCESS_PENDING   = 0b00000100,
+	TPM_ACCESS_SEIZE     = 0b00001000,
+	TPM_ACCESS_SEIZED    = 0b00010000,
+	TPM_ACCESS_ACTIVE    = 0b00100000,
+	TPM_ACCESS_ZERO      = 0b01000000,
+	TPM_ACCESS_VALID     = 0b10000000,
+
+	TPM_STATUS_ZERO      = 0b00000001,
+	TPM_STATUS_RETRY     = 0b00000010,
+	TPM_STATUS_TEST_DONE = 0b00000100,
+	TPM_STATUS_EXPECTING = 0b00001000,
+	TPM_STATUS_AVAILABLE = 0b00010000,
+	TPM_STATUS_EXECUTE   = 0b00100000,
+	TPM_STATUS_STARTCMD  = 0b01000000,
+	TPM_STATUS_VALID     = 0b10000000,
+};
+
+uint32_t tpm_inb(uint32_t address);
+uint32_t tpm_inw(uint32_t address);
+uint32_t tpm_ind(uint32_t address);
+
+uint32_t tpm_outb(uint32_t address, uint8_t data);
+uint32_t tpm_outw(uint32_t address, uint16_t data);
+uint32_t tpm_outd(uint32_t address, uint32_t data);
+
+void tpm_init();

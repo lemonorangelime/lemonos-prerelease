@@ -1,0 +1,5 @@
+*.bin
+*.iso
+*.o
+build/
+linked-lists/
