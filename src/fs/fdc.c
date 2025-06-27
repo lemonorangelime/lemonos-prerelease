@@ -262,7 +262,7 @@ int fdc_disk_write(int disk, int cylinder, int head, int sector, void * buffer, 
 	return ret;
 }
 
-// amazing name
+// lol
 void fdc_perpendiculate() {
 	uint8_t disks = 0;
 	if (drives[0] == FDC_2_88MB) {
@@ -285,7 +285,7 @@ int fdc_reset(int disks) {
 	fdc_cmd(FDC_CMD_SELECT);
 	fdc_cmd(0xdf);
 	fdc_cmd(0x02);
-	for (int i = 0; i < disks; i++) {
+	for (int i = 0; i <= disks; i++) {
 		int calibrate_status = 0;
 		fdc_select(i);
 		calibrate_status = fdc_calibrate(i);
@@ -432,5 +432,9 @@ void fdc_init() {
 	drives[0] = floppy >> 4;
 	drives[1] = floppy & 0x0f;
 	fdc_reset(1);
-	// fdc_calibrate(0);
+	fdc_calibrate(0);
+
+	char sector[512];
+	fdc_sector(0, 0, 0, 1, FDC_CMD_READ, sector);
+	printf(u"Sector 1: %8\n", sector);
 }

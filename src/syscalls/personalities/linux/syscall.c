@@ -28,6 +28,7 @@
 #include <bin_formats/elf.h>
 #include <time.h>
 #include <graphics/displays.h>
+#include <graphics/gpu.h>
 
 static personality_t personality;
 
@@ -237,6 +238,27 @@ void lctl_linux_syscall(registers_t * regs) {
 			int bpp = (int) regs->edx;
 			display_crunch(display, bpp);
 			regs->eax = 0; // we should figure out an error code for you
+			return;
+		}
+        case LCTL_GPU_AUTOSELECT: {
+			regs->eax = (uint32_t) gpu_get_default();
+			return;
+		}
+        case LCTL_GPU_ALLOC: {
+			// allocate VRAM (todo...)
+			regs->eax = 0x12c000;
+			return;
+		}
+        case LCTL_GPU_CALL: {
+			switch (regs->ecx) {
+				case GPUCAP_FUNC_RECT_FILL:
+					gpu_surface_t * surface = (gpu_surface_t *) regs->edx;
+					// gpu_rect_fill(/* how */, surface->fb, surface->width, surface->height, surface->bpp, /* how */);
+					return;
+			}
+			return;
+		}
+        case LCTL_GPU_GETCAP: {
 			return;
 		}
 	}

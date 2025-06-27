@@ -1,5 +1,5 @@
 # lemonos-prerelease
-limited LemonOS prerelease (cleaned up LemonOS occasionally receiving updates from private dev repo)
+limited LemonOS prerelease
 
 # warning
 a lot of things are broken or unusable (such as gpu drivers which you cant actually use to do anything at the moment), so dont expect anything amazing

@@ -105,7 +105,7 @@ int main(uint32_t eax, uint32_t ebx) {
 	cprintf(LEGACY_COLOUR_WHITE, u"CPU Target Tempature: %u°C\n", therm_target);
 	cprintf(LEGACY_COLOUR_WHITE, u"CPU Tempature: %u°C\n", get_cpu_temp());
 
-	//fdc_init();
+	fdc_init();
 	personality_init();
 	multitasking_init();
 	v8086_init();

@@ -1,5 +1,16 @@
 *.bin
 *.iso
 *.o
+*.elf
+*.log
+*.py
 build/
+build/*
 linked-lists/
+linked-lists/*
+.vscode/*
+.vscode/
+*.vsix
+*.json
+.git
+*.code-workspace

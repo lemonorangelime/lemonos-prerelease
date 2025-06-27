@@ -79,4 +79,4 @@ build: $(OBJS) $(ASM_OBJS)
 	strip $(OUTPUT)
 
 qemu:
-	$(QEMU) $(QEMUFLAGS) -net nic,model=rtl8139,netdev=rtl8139 -netdev user,id=rtl8139 -cdrom $(GRUBDST) -m $(QEMUMEMORY)
+	$(QEMU) $(QEMUFLAGS) -net nic,model=rtl8139,netdev=rtl8139 -netdev user,id=rtl8139 -fda disk.img -cdrom $(GRUBDST) -m $(QEMUMEMORY)

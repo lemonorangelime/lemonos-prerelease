@@ -30,6 +30,20 @@ typedef struct gpu {
 	void * priv;
 } gpu_t;
 
+typedef struct gpu_surface {
+	void * fb;
+	int width;
+	int height;
+	int bpp;
+} gpu_surface_t;
+
+typedef struct gpu_fill_call {
+	void * fb;
+	int width;
+	int height;
+	int bpp;
+} gpu_fill_call_t;
+
 enum {
 	GPUCAP_FUNC_LINE_DRAW,
 	GPUCAP_FUNC_RECT_FILL,
