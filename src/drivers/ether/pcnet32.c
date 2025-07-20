@@ -315,16 +315,6 @@ int pcnet32_reset(pci_t * pci) {
 	return 0;
 }
 
-int pcnet32_check(pci_t * pci) {
-	if (pci->vendor == 0x1022 && pci->device == 0x2000) {
-		return 1; // Am79C970A
-	}
-	if (pci->vendor == 0x1022 && pci->device == 0x2001) {
-		return 1; // Am79C970A but ISA edition (?)
-	}
-	return 0;
-}
-
 void pcnet32_send(interface_t * interface, void * packet, size_t size) {
 	if (interface->mode == MODE_OFF || interface->working == 0) {
 		return;
@@ -430,6 +420,17 @@ int pcnet32_dev_init(pci_t * pci) {
 	pcnet32_setmac(pcnet32_interface->mac);
 	net_register_interface(pcnet32_interface);
 	pcnet32_working = 1;
+	printf(u"PCNET32: detected PCnet 32 ethernet controller\n");
+}
+
+int pcnet32_check(pci_t * pci) {
+	if (pci->vendor == 0x1022 && pci->device == 0x2000) {
+		return 1; // Am79C970A
+	}
+	if (pci->vendor == 0x1022 && pci->device == 0x2001) {
+		return 1; // Am79C970A but ISA edition (?)
+	}
+	return 0;
 }
 
 void pcnet32_init() {

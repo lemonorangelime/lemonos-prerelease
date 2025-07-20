@@ -48,9 +48,9 @@ void keyboard_callback(registers_t * regs) {
 		next_byte = 0;
 		switch (keycode) {
 			default:
-				if (gfx_init_done) {
-					cprintf(LEGACY_COLOUR_RED, u"Unknown key 0x%x\n", keycode);
-				}
+				//if (gfx_init_done) {
+				//	cprintf(LEGACY_COLOUR_RED, u"Unknown key 0x%x\n", keycode);
+				//}
 				return;
 			case 0x4f:
 				keycode = 0; // silence end key (used by 86box)

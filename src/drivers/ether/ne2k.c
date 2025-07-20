@@ -99,34 +99,6 @@ int ne2k_ctrl(interface_t * interface, int cmd, uint32_t op) {
 uint64_t ne2k_read_mac() {
 }
 
-int ne2k_check(pci_t * pci) {
-	if (pci->vendor == 0x10ec && pci->device == 0x8029) {
-		return 1; // RTL8029
-	}
-	if (pci->vendor == 0x1050 && pci->device == 0x0940) {
-		return 1; // Winbond 89C940
-	}
-	if (pci->vendor == 0x11f6 && pci->device == 0x1401) {
-		return 1; // Compex RL2000
-	}
-	if (pci->vendor == 0x8e2e && pci->device == 0x3000) {
-		return 1; // KTI ET32P2
-	}
-	if (pci->vendor == 0x4a14 && pci->device == 0x5000) {
-		return 1; // NetVin NV5000SC
-	}
-	if (pci->vendor == 0x10bd && pci->device == 0x0e34) {
-		return 1; // SureCom NE34
-	}
-	if (pci->vendor == 0x1050 && pci->device == 0x5a5a) {
-		return 1; // Winbond W89C940F
-	}
-	if (pci->vendor == 0x8c4a && pci->device == 0x1980) {
-		return 1; // Winbond W89C940
-	}
-	return 0;
-}
-
 void ne2k_dma_in(void * p, uint16_t frame, uint16_t size) {
 	outb(ne2k_iobase + NE2K_P0W_CMD, NE2K_CMD_RDMA_ABORT | NE2K_CMD_PAGE0 | NE2K_CMD_START);
 	outb(ne2k_iobase + NE2K_P0W_REMOTE_COUNT_LOW, size & 0xff);
@@ -301,9 +273,39 @@ int ne2k_dev_init(pci_t * pci) {
 	ne2k_interface->speed = 10;
 	ne2k_interface->mac = ne2k_read_mac();
 	net_register_interface(ne2k_interface);
+
+	printf(u"NE2K: detected Ne2000 ethernet controller\n");
 }
 
 int ne2k_unsafe_scan() {
+	return 0;
+}
+
+int ne2k_check(pci_t * pci) {
+	if (pci->vendor == 0x10ec && pci->device == 0x8029) {
+		return 1; // RTL8029
+	}
+	if (pci->vendor == 0x1050 && pci->device == 0x0940) {
+		return 1; // Winbond 89C940
+	}
+	if (pci->vendor == 0x11f6 && pci->device == 0x1401) {
+		return 1; // Compex RL2000
+	}
+	if (pci->vendor == 0x8e2e && pci->device == 0x3000) {
+		return 1; // KTI ET32P2
+	}
+	if (pci->vendor == 0x4a14 && pci->device == 0x5000) {
+		return 1; // NetVin NV5000SC
+	}
+	if (pci->vendor == 0x10bd && pci->device == 0x0e34) {
+		return 1; // SureCom NE34
+	}
+	if (pci->vendor == 0x1050 && pci->device == 0x5a5a) {
+		return 1; // Winbond W89C940F
+	}
+	if (pci->vendor == 0x8c4a && pci->device == 0x1980) {
+		return 1; // Winbond W89C940
+	}
 	return 0;
 }
 

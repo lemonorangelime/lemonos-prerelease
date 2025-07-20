@@ -53,6 +53,19 @@ void sleep_seconds(int time) {
 	}
 }
 
+#define do_swap(type, x, y) type temp = *x;\
+	*x = *y; \
+	*y = temp;
+
+#define create_swap_function(type, name) void name(type * x, type * y) { \
+		do_swap(type, x, y); \
+	}
+
+create_swap_function(uint8_t, swap_p8);
+create_swap_function(uint16_t, swap_p16);
+create_swap_function(uint32_t, swap_p32);
+create_swap_function(uint64_t, swap_p64);
+
 uint16_t htonw(uint16_t d) {
 	return (d << 8) | (d >> 8);
 }

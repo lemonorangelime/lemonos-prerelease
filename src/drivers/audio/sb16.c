@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <pit.h>
+#include <util.h>
 #include <interrupts/irq.h>
 #include <ports.h>
 #include <string.h>
@@ -120,27 +121,21 @@ int sb16_check(pci_t * pci) {
 }
 
 int sb16_detect(uint32_t base) {
-	sb16_base = base;
+	sb16_base = base; // evil global
 
 	uint8_t test = sb16_cmd(SB16_CMD_GET_VERSION, 0, 0);
 	if (test < 1 || test > 4) {
 		return 0; // not a sound blaster :c
 	}
 
-	test = sb16_reset_dsp();
-	uint64_t target = ticks + (pit_freq / 100);
-	while (ticks < target) {
-		test = sb16_inb(SB16_READ);
-		if (test == 0xaa) {
-			return 1; // // woaw! a sound blaster!
-		}
-	}
-
-	return 0; // not a sound blaster :c
+	sb16_reset_dsp();
+	sleep_seconds(1);
+	test = sb16_inb(SB16_READ);
+	return test == 0xaa; // is sound blaster?
 }
 
 int sb16_unsafe_scan() {
-	uint16_t ports[] = {0x220, 0x240, 0x260, 0x280};
+	uint16_t ports[] = {0x220, 0x240, 0x260, 0x280}; // jumper addresses
 	size_t length = sizeof(ports) / sizeof(ports[0]);
 	for (int i = 0; i < length; i++) {
 		uint16_t port = ports[i];

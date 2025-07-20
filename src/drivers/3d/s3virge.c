@@ -1,12 +1,14 @@
+#include <drivers/3d/s3virge.h>
+#include <drivers/vga/vga.h>
+#include <graphics/displays.h>
+#include <graphics/gpu.h>
+#include <memory/allocators.h>
 #include <bus/pci.h>
 #include <stdio.h>
 #include <string.h>
 #include <memory.h>
 #include <pit.h>
-#include <drivers/3d/s3virge.h>
-#include <drivers/vga/vga.h>
-#include <graphics/displays.h>
-#include <graphics/gpu.h>
+#include <util.h>
 
 // WARNING: this is *VERY* unfinished
 
@@ -25,6 +27,24 @@ void s3virge_set_bits(uint8_t reg, uint8_t bits) {
 	uint8_t v = vga_crtc_inb(reg);
 	v |= bits;
 	vga_crtc_outb(reg, v);
+}
+
+uint32_t s3virge_vram_size() {
+	uint8_t size = vga_crtc_inb(0x36);
+	size >>= 5;
+	switch (size) {
+		default:
+		case S3_VIRGE_2MB:
+			return 2 << 20;
+
+		case S3_VIRGE_4MB:
+		case S3_VIRGE_4MB_2:
+		case S3_VIRGE_4MB_3:
+			return 4 << 20;
+
+		case S3_VIRGE_8MB:
+			return 8 << 20;
+	}
 }
 
 uint8_t s3virge_c67_format_bpp(int bpp) {
@@ -119,7 +139,9 @@ s3virge_t * s3virge_make_controller(pci_t * pci) {
 	virge->line_2d = (void *) (base + 0x100a8d4);
 	virge->polygon_2d = (void *) (base + 0x100acd4);
 	virge->triangle_3d = (void *) (base + 0x100b4d4);
+	virge->allocator = allocators_create(u"generic", (void *) (base + 0x180000), s3virge_vram_size());
 	virge->base = base;
+	virge->allocator_base = base + 0x180000;
 	return virge;
 }
 
@@ -130,86 +152,65 @@ int s3virge_gpu_get_cap(int cap) {
 // check wiki
 
 int s3virge_gpu_rect_fill(gpu_t * gpu, void * fb, int width, int height, int bpp, int x, int y, int src_width, int src_height, uint32_t colour) {
-	int gpubpp = (bpp == 32) ? 24 : bpp;
 	s3virge_t * virge = gpu->priv;
+	if (bpp == 32) {
+		gpu_software_rect_fill(gpu, fb + virge->allocator_base, width, height, bpp, x, y, src_width, src_height, colour);
+		return 0;
+	}
+	int gpubpp = (bpp == 32) ? 24 : bpp;
 	int stride = width * (gpubpp >> 3);
 	uint8_t format = gpubpp >> 3;
-	virge->blitter_2d->dest_base = 0x12c000;
+	//printf(u"S3 ViRGE: fill(%r, %r)\n", fb, colour);
+
+	virge->blitter_2d->dest_base = (uint32_t) fb + virge->allocator_base;
 	virge->blitter_2d->mono_pattern_foreground = colour;
 	virge->blitter_2d->stride = (stride << 16) | stride;
 	virge->blitter_2d->rectangle_size = (width << 16) | height;
 	virge->blitter_2d->rectangle_dest_coords = (x << 16) | y;
+	virge->blitter_2d->horizontal_clip = width - 1;
+	virge->blitter_2d->vertical_clip = height - 1;
 	virge->blitter_2d->cmd_set = (0xf0 << 17) | (1 << 8) | ((format - 1) << 2) | (0b11 << 25) | (2 << 27);
 
 	uint64_t target = ticks + 5;
 	while (ticks < target) {}
 
-	if (bpp == 32) {
-		uint32_t * dest = fb;
-		void * src = (void *) (virge->base + 0x12c000);
-		int size = width * height;
-		while (size--) {
-			*dest = 0xff000000;
-			memcpy(dest, src, 3);
-			dest++;
-			src += 3;
-		}
-		return 0;
-	}
-
-	memcpy(fb, (void *) (virge->base + 0x12c000), width * height * (gpubpp >> 3));
 	return 0;
 }
 
 int s3virge_gpu_rect_draw(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int bpp) {
-	int gpubpp = (bpp == 32) ? 24 : bpp;
 	s3virge_t * virge = gpu->priv;
+	if (bpp == 32) {
+		gpu_software_rect_draw(gpu, fb + virge->allocator_base, width, height, src_fb, src_width, src_height, x, y, bpp);
+		return 0;
+	}
+	int gpubpp = (bpp == 32) ? 24 : bpp;
 	int stride = width * (gpubpp >> 3);
 	int src_stride = src_width * (gpubpp >> 3);
 	uint8_t format = gpubpp >> 3;
+	//printf(u"S3 ViRGE: blit(%r, %r)\n", fb, src_fb);
 
-	if (bpp == 32) {
-		void * dest = (void *) (virge->base + 0x258000);
-		uint32_t * src = src_fb;
-		int size = width * height;
-		while (size--) {
-			memcpy(dest, src, 3);
-			dest += 3;
-			src++;
-		}
-	} else {
-		memcpy((void *) (virge->base + 0x258000), src_fb, src_width * src_height * format);
-	}
-	virge->blitter_2d->src_base = 0x258000;
-	virge->blitter_2d->dest_base = 0x12c000;
+	virge->blitter_2d->src_base = (uint32_t) src_fb + virge->allocator_base;
+	virge->blitter_2d->dest_base = (uint32_t) fb + virge->allocator_base;
 	virge->blitter_2d->stride = (stride << 16) | src_stride;
 	virge->blitter_2d->rectangle_size = (src_width << 16) | src_height;
 	virge->blitter_2d->rectangle_dest_coords = (x << 16) | y;
+	virge->blitter_2d->horizontal_clip = width - 1;
+	virge->blitter_2d->vertical_clip = height - 1;
 	virge->blitter_2d->cmd_set = (0xcc << 17) | (1 << 8) | ((format - 1) << 2) | (0b11 << 25) | (0 << 27);
 
 	uint64_t target = ticks + 5;
 	while (ticks < target) {}
 
-	if (bpp == 32) {
-		uint32_t * dest = fb;
-		void * src = (void *) (virge->base + 0x12c000);
-		int size = width * height;
-		while (size--) {
-			*dest = 0xff000000;
-			memcpy(dest, src, 3);
-			dest++;
-			src += 3;
-		}
-		return 0;
-	}
-
-	memcpy(fb, (void *) (virge->base + 0x12c000), width * height * format);
 	return 0;
 }
 
 int s3virge_gpu_line_draw(gpu_t * gpu, void * fb, int width, int height, int bpp, int x1, int y1, int x2, int y2, uint32_t colour) {
-	int gpubpp = (bpp == 32) ? 24 : bpp;
 	s3virge_t * virge = gpu->priv;
+	if (bpp == 32) {
+		gpu_software_line_draw(gpu, fb + virge->allocator_base, width, height, bpp, x1, y1, x2, y2, colour);
+		return 0;
+	}
+	int gpubpp = (bpp == 32) ? 24 : bpp;
 	int stride = width * (gpubpp >> 3);
 	uint8_t format = gpubpp >> 3;
 	if (y2 > y1) {
@@ -232,11 +233,11 @@ int s3virge_gpu_line_draw(gpu_t * gpu, void * fb, int width, int height, int bpp
 			xstart += (1 << 20) - 1;
 		}
 	}
-	virge->line_2d->dest_base = 0x12c000;
+	virge->line_2d->dest_base = (uint32_t) fb + virge->allocator_base;
 	virge->line_2d->stride = (stride << 16) | 0;
 	virge->line_2d->rectangle_size = (width << 16) | height;
 	virge->blitter_2d->mono_pattern_foreground = colour;
-	virge->line_2d->line_endpoints = (x1 << 16) | x2;
+	virge->line_2d->line_endpoints = (x2 << 16) | x1;
 	virge->line_2d->line_xdelta = xdelta;
 	virge->line_2d->line_xstart = xstart;
 	virge->line_2d->line_ystart = y1;
@@ -246,20 +247,6 @@ int s3virge_gpu_line_draw(gpu_t * gpu, void * fb, int width, int height, int bpp
 	uint64_t target = ticks + 5;
 	while (ticks < target) {}
 
-	if (bpp == 32) {
-		uint32_t * dest = fb;
-		void * src = (void *) (virge->base + 0x12c000);
-		int size = width * height;
-		while (size--) {
-			*dest = 0xff000000;
-			memcpy(dest, src, 3);
-			dest++;
-			src += 3;
-		}
-		return 0;
-	}
-
-	memcpy(fb, (void *) (virge->base + 0x12c000), width * height * (gpubpp >> 3));
 	return 0;
 }
 
@@ -325,7 +312,7 @@ int s3virge_gpu_tri_draw(gpu_t * gpu, void * fb, int width, int height, int bpp,
 	virge->triangle_3d->triangle_z_start = s3virge_s16_15(a->z);
 	virge->triangle_3d->triangle_zy_delta = s3virge_s16_15(dz) / dy;
 	virge->triangle_3d->triangle_zx_delta = s3virge_s16_15(s3virge_interp(a->z, b->z, dz, dy01, dy, _dx)) / _dx;
-	virge->triangle_3d->dest_base_address = 0x12c000; // dynamically allocate this in the future
+	virge->triangle_3d->dest_base_address = (uint32_t) fb + virge->allocator_base;
 	virge->triangle_3d->stride = stride << 16;
 	virge->triangle_3d->triangle_y_start = a->y;
 	virge->triangle_3d->triangle_x_start = s3virge_s11_20(a->x + a->y * dx2 / dy);
@@ -342,20 +329,33 @@ int s3virge_gpu_tri_draw(gpu_t * gpu, void * fb, int width, int height, int bpp,
 	uint64_t target = ticks + (pit_freq * 4);
 	while (ticks < target) {}
 
-	if (bpp == 32) {
-		uint32_t * dest = fb;
-		void * src = (void *) (virge->base + 0x12c000);
-		int size = width * height;
-		while (size--) {
-			*dest = 0xff000000;
-			memcpy(dest, src, 3);
-			dest++;
-			src += 3;
-		}
+	return 0;
+}
+
+void * s3virge_gpu_alloc(gpu_t * gpu, uint32_t size) {
+	s3virge_t * virge = gpu->priv;
+	void * p = allocators_malloc(virge->allocator, size);
+	//printf(u"S3 ViRGE: alloc(%d) = %r\n", size, p);
+	return p;
+}
+
+int s3virge_gpu_transfer(gpu_t * gpu, void * buffer1, void * buffer2, uint32_t size, int direction) {
+	s3virge_t * virge = gpu->priv;
+	//printf(u"S3 ViRGE: transfer(%r, %r, %d, %s)\n", buffer1, buffer2, size, direction == GPU_OUT ? u"OUT" : u"IN");
+	if (direction == GPU_OUT) {
+		memcpy(buffer1, buffer2 + virge->allocator_base, size);
 		return 0;
 	}
+	memcpy(buffer1 + virge->allocator_base, buffer2, size);
+	return 0;
+}
 
-	memcpy(fb, (void *) (virge->base + 0x12c000), width * height * (gpubpp >> 3));
+int s3virge_gpu_crunch(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int src_bpp, int bpp) {
+	s3virge_t * virge = gpu->priv;
+	//printf(u"S3 ViRGE: crunch(%r, %d, %r, %d)\n", fb, bpp, src_fb, src_bpp);
+	fb += virge->allocator_base;
+	src_fb += virge->allocator_base;
+	gpu_software_crunch(gpu, fb, width, height, src_fb, src_width, src_height, x, y, src_bpp, bpp);
 	return 0;
 }
 
@@ -373,10 +373,13 @@ void s3virge_reset(pci_t * pci) {
 
 	gpu_t * gpu = gpu_create(u"S3 ViRGE");
 	gpu->get_cap = s3virge_gpu_get_cap;
+	gpu->alloc = s3virge_gpu_alloc;
+	gpu->transfer = s3virge_gpu_transfer;
 	gpu->rect_fill = s3virge_gpu_rect_fill;
 	gpu->rect_draw = s3virge_gpu_rect_draw;
 	gpu->line_draw = s3virge_gpu_line_draw;
 	gpu->tri_draw = s3virge_gpu_tri_draw;
+	gpu->crunch = s3virge_gpu_crunch;
 	gpu->priv = virge;
 	gpu_register(gpu);
 
@@ -401,6 +404,7 @@ int s3virge_dev_init(pci_t * pci) {
 
 	pci_cmd_set_flags(pci, PCI_CMD_MASTER | PCI_CMD_MEM | PCI_CMD_IO | PCI_CMD_WRITE | PCI_CMD_SNOOPY); // enable dma (master mode)
 	s3virge_reset(pci);
+	printf(u"S3 ViRGE: detected S3 ViRGE 3D accelerator\n");
 }
 
 int s3virge_check(pci_t * pci) {

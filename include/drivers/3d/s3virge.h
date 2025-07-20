@@ -1,6 +1,8 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
+#include <memory/allocators.h>
 
 typedef struct {
 	uint32_t primary_stream_ctrl;
@@ -256,7 +258,18 @@ typedef struct {
 	volatile s3virge_2d_line_controller_t * line_2d;
 	volatile s3virge_2d_polygon_controller_t * polygon_2d;
 	volatile s3virge_3d_triangle_controller_t * triangle_3d;
+	allocator_t * allocator;
 	uint32_t base;
+	uint32_t allocator_base;
 } s3virge_t;
+
+enum {
+	S3_VIRGE_4MB = 0b000,
+	S3_VIRGE_4MB_2 = 0b001,
+	S3_VIRGE_4MB_3 = 0b010,
+	S3_VIRGE_8MB = 0b011,
+	S3_VIRGE_2MB = 0b100,
+};
+
 
 void s3virge_init();

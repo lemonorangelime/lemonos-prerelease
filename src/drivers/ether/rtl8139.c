@@ -230,20 +230,6 @@ int rtl8139_setmac(uint64_t mac) {
 	return 0;
 }
 
-int rtl8139_check(pci_t * pci) {
-	if (pci->vendor == 0x10ec && pci->device == 0x8129) {
-		return 1; // RTL8129 (even cheaper RTL8139)
-	}
-	if (pci->vendor == 0x10ec && pci->device == 0x8139) {
-		return 1; // RTL8139
-	}
-	if (pci->vendor == 0x10ec && pci->device == 0x8138) {
-		return 1; // RTL8139B
-	}
-	return 0;
-}
-
-
 int rtl8139_dev_init(pci_t * pci) {
 	rtl8139_found++;
 	if (rtl8139_found != 1) {
@@ -261,6 +247,20 @@ int rtl8139_dev_init(pci_t * pci) {
 	rtl8139_setmac(rtl8139_interface->mac);
 	net_register_interface(rtl8139_interface);
 	rtl8139_working = 1;
+	printf(u"RTL8139: detected RTL8139 ethernet controller\n");
+}
+
+int rtl8139_check(pci_t * pci) {
+	if (pci->vendor == 0x10ec && pci->device == 0x8129) {
+		return 1; // RTL8129 (even cheaper RTL8139)
+	}
+	if (pci->vendor == 0x10ec && pci->device == 0x8139) {
+		return 1; // RTL8139
+	}
+	if (pci->vendor == 0x10ec && pci->device == 0x8138) {
+		return 1; // RTL8139B
+	}
+	return 0;
 }
 
 void rtl8139_init() {

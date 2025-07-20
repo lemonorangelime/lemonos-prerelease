@@ -138,6 +138,7 @@ enum {
 	LCTL_GPU_ALLOC,
 	LCTL_GPU_CALL,
 	LCTL_GPU_GETCAP,
+	LCTL_GPU_TRANSFER, // just realised you cant write to the pointer cause its in vram lmao
 };
 
 void personality_linux_init();

@@ -8,10 +8,13 @@ typedef struct gpu gpu_t;
 typedef struct gpuvertex gpu_vertex_t;
 
 typedef int (* gpu_cap_t)(int cap);
+typedef void * (* gpu_alloc_t)(gpu_t * gpu, uint32_t size);
+typedef int (* gpu_transfer_t)(gpu_t * gpu, void * buffer1, void * buffer2, uint32_t size, int direction);
 typedef int (* gpu_rect_fill_t)(gpu_t * gpu, void * fb, int width, int height, int bpp, int x, int y, int src_width, int src_height, uint32_t colour);
 typedef int (* gpu_rect_draw_t)(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int bpp);
 typedef int (* gpu_line_draw_t)(gpu_t * gpu, void * fb, int width, int height, int bpp, int x1, int y1, int x2, int y2, uint32_t colour);
 typedef int (* gpu_tri_draw_t)(gpu_t * gpu, void * fb, int width, int height, int bpp, gpu_vertex_t * a, gpu_vertex_t * b, gpu_vertex_t * c, int fov, uint32_t colour);
+typedef int (* gpu_crunch_t)(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int src_bpp, int bpp);
 
 typedef struct gpuvertex {
 	float x;
@@ -23,10 +26,13 @@ typedef struct gpu {
 	uint16_t * name;
 	uint64_t ranking;
 	gpu_cap_t get_cap;
+	gpu_alloc_t alloc;
+	gpu_transfer_t transfer;
 	gpu_rect_fill_t rect_fill;
 	gpu_rect_draw_t rect_draw;
 	gpu_line_draw_t line_draw;
 	gpu_tri_draw_t tri_draw;
+	gpu_crunch_t crunch;
 	void * priv;
 } gpu_t;
 
@@ -43,6 +49,11 @@ typedef struct gpu_fill_call {
 	int height;
 	int bpp;
 } gpu_fill_call_t;
+
+enum {
+	GPU_IN,
+	GPU_OUT,
+}; // transfer direction
 
 enum {
 	GPUCAP_FUNC_LINE_DRAW,
@@ -75,13 +86,21 @@ enum {
 
 gpu_t * gpu_create(uint16_t * name);
 gpu_t * gpu_get_default();
+void * gpu_alloc(gpu_t * gpu, uint32_t size);
+int gpu_transfer(gpu_t * gpu, void * buffer1, void * buffer2, uint32_t size, int direction);
 int gpu_rect_fill(gpu_t * gpu, void * fb, int width, int height, int bpp, int x, int y, int src_width, int src_height, uint32_t colour);
-int gpu_software_rect_fill(gpu_t * gpu, void * fb, int width, int height, int bpp, int x, int y, int src_width, int src_height, uint32_t colour);
 int gpu_rect_draw(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int bpp);
-int gpu_software_rect_draw(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int bpp);
 int gpu_line_draw(gpu_t * gpu, void * fb, int width, int height, int bpp, int x1, int y1, int x2, int y2, uint32_t colour);
-int gpu_software_line_draw(gpu_t * gpu, void * fb, int width, int height, int bpp, int x1, int y1, int x2, int y2, uint32_t colour);
 int gpu_tri_draw(gpu_t * gpu, void * fb, int width, int height, int bpp, gpu_vertex_t * a, gpu_vertex_t * b, gpu_vertex_t * c, int fov, uint32_t colour);
+int gpu_crunch(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int src_bpp, int bpp);
+
+void * gpu_software_alloc(gpu_t * gpu, uint32_t size);
+int gpu_software_transfer(gpu_t * gpu, void * buffer1, void * buffer2, uint32_t size, int direction);
+int gpu_software_rect_fill(gpu_t * gpu, void * fb, int width, int height, int bpp, int x, int y, int src_width, int src_height, uint32_t colour);
+int gpu_software_rect_draw(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int bpp);
+int gpu_software_line_draw(gpu_t * gpu, void * fb, int width, int height, int bpp, int x1, int y1, int x2, int y2, uint32_t colour);
 int gpu_software_tri_draw(gpu_t * gpu, void * fb, int width, int height, int bpp, gpu_vertex_t * a, gpu_vertex_t * b, gpu_vertex_t * c, int fov, uint32_t colour);
+int gpu_software_crunch(gpu_t * gpu, void * fb, int width, int height, void * src_fb, int src_width, int src_height, int x, int y, int src_bpp, int bpp);
+
 void gpu_register(gpu_t * gpu);
 void gpu_init();

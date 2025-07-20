@@ -86,7 +86,7 @@ void sysrq_handle_event(event_t * event) {
 	}
 	kbd_event_t * keyevent = (kbd_event_t *) event;
 	keyboard_held_t * held = keyevent->held;
-	static int do_sysrq; 
+	static int do_sysrq = 0;
 
 	if (held->super && keyevent->keycode == 0x56) {
 		do_sysrq = 1;

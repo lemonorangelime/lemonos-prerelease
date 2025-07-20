@@ -1269,7 +1269,7 @@ void gfx_init() {
 	root_window.size.width = multiboot_header->framebuffer_width;
 	root_window.size.height = multiboot_header->framebuffer_height;
 	root_window.bpp = multiboot_header->framebuffer_bpp;
-	memset32(root_window.fb, 0x00000000, root_window.size.width * root_window.size.height);
+	//memset32(root_window.fb, 0x00000000, root_window.size.width * root_window.size.height);
 
 	vga_dump_palette();
 
@@ -1279,7 +1279,7 @@ void gfx_init() {
 	}
 	back_buffer.size.width = root_window.size.width;
 	back_buffer.size.height = root_window.size.height;
-	memset32(back_buffer.fb, 0x00000000, root_window.size.width * root_window.size.height);
+	//memset32(back_buffer.fb, 0x00000000, root_window.size.width * root_window.size.height);
 	back_buffer_size = root_window.size.width * root_window.size.height;
 
 	background.fb = malloc((root_window.size.width * (root_window.size.height - taskbar_height - 2)) * 4);
@@ -1298,7 +1298,7 @@ void gfx_init() {
 	cursor.y = mouse_y;
 	cursor.size.width = 16;
 	cursor.size.height = 16;
-	memset(cursor.fb, 0, 1024);
+	//memset(cursor.fb, 0, 1024);
 	gfx_char_draw(u'\ue01e', 0, 0, 0xff000000, &cursor);
 
 	taskbar.fb = malloc((root_window.size.width * (taskbar_height + 2)) * 4);

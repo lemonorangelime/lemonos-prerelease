@@ -6,6 +6,8 @@
 *.py
 build/
 build/*
+imgs/
+imgs/*
 linked-lists/
 linked-lists/*
 .vscode/*

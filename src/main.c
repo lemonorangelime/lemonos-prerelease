@@ -20,7 +20,9 @@
 #include <input/input.h>
 #include <multitasking.h>
 #include <fs/ide.h>
+#include <fs/scsi.h>
 #include <fs/fdc.h>
+#include <fs/fs.h>
 #include <cpuspeed.h>
 #include <input/layout.h>
 #include <sysrq.h>
@@ -55,12 +57,8 @@
 #include <drivers/vga/bochs.h>
 #include <drivers/rng/rng.h>
 #include <graphics/gpu.h>
-
-void main2() {
-	while (1) {
-		yield();
-	}
-}
+#include <drivers/audio/adlib.h>
+#include <drivers/audio/sb.h>
 
 int main(uint32_t eax, uint32_t ebx) {
 	disable_interrupts();
@@ -73,7 +71,8 @@ int main(uint32_t eax, uint32_t ebx) {
 	irq_init();
 	pit_init(1000);
 	layout_init();
-	//ide_init();
+	ide_init();
+	scsi_init();
 	memset((void *) 0x800, 0, 2048);
 	enable_interrupts();
 	keyboard_init();
@@ -90,7 +89,7 @@ int main(uint32_t eax, uint32_t ebx) {
 	cprintf(LEGACY_COLOUR_WHITE, u"You are using LemonOS v%d.%d.%d.%d (%s)", ver_edition, ver_major, ver_minor, ver_patch, os_name16);
 	cprintf(LEGACY_COLOUR_WHITE, u"\n");
 	//thermal_init();
-	//cpuspeed_measure();
+	cpuspeed_measure();
 	//acpi_init();
 	//apic_init();
 	if (madt_broken) {
@@ -129,9 +128,12 @@ int main(uint32_t eax, uint32_t ebx) {
 	vmouse_init(); // init virtual mouse driver
 	vdebugger_init(); // init virtual debugger driver
 	vbox_init(); // init virtualbox guest interface
+	adlib_init();
+	sb_init();
 	rng_init();
 	pci_probe();
 	smbios_init();
+	fs_init();
 	printf(u"multicore stack: %r\n", *multicpu_stack);
 	printf(u"cpus booted: %d\n", *cpus_booted);
 	printf(u"init done\n");
@@ -144,6 +146,22 @@ int main(uint32_t eax, uint32_t ebx) {
 	yield();
 
 	printf(u"using %dMb of installed %dMb RAM\n", used_memory / 1024000, heap_length / 1024000);
+
+	fs_t * fs = rootfs;
+	if (fs) {
+		fs_node_t * node = fs_path2node(fs, u"/");
+		fs_node_t * child = fs_get_child(node);
+
+		printf(u"/\n");
+		while (child) {
+			fs_statbuf_t statbuf;
+			fs_stat(child, &statbuf);
+			uint16_t * name = fs_read_node_name(child);
+			child = fs_iterate(child);
+			printf(u"%c── %s%c\n", child == NULL ? u'└' : u'├', name, (statbuf.flags & STAT_FLAGS_DIRECTORY) ? u'/' : u'\0');
+			free(name);
+		}
+	}
 
 	protected_lock = 0;
 	(*get_current_process())->killed = 1;

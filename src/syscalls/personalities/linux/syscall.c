@@ -75,7 +75,15 @@ void read_linux_syscall(registers_t * regs) {
 			len -= t;
 		}
 		disable_interrupts();
+		return;
 	}
+	enable_interrupts();
+	fd_t * fds = find_fd(fd);
+	if (!fds) {
+		regs->eax = -1;
+		return;
+	}
+	regs->eax = fds->read(fds, buffer, len);
 }
 
 // the worst
@@ -124,13 +132,79 @@ void write_linux_syscall(registers_t * regs) {
 		}
 		return;
 	}
+	enable_interrupts();
 	fd_t * fds = find_fd(fd);
 	if (!fds) {
 		regs->eax = -1;
 		return;
 	}
-	fds->write(fds, text, len);
-	regs->eax = len;
+	regs->eax = fds->write(fds, text, len);
+}
+
+int file_write_fd(fd_t * fd, void * buffer, uint32_t size) {
+	if (fd->type != FD_FILE) {
+		return -1;
+	}
+	fd_file_t * filefd = (fd_file_t *) fd;
+	return fs_write(filefd->node, buffer, size);
+}
+
+int file_read_fd(fd_t * fd, void * buffer, uint32_t size) {
+	if (fd->type != FD_FILE) {
+		return -1;
+	}
+	fd_file_t * filefd = (fd_file_t *) fd;
+	return fs_read(filefd->node, buffer, size);
+}
+
+void open_linux_syscall(registers_t * regs) {
+	char * text = (char *) regs->ebx;
+	int len = strlen(text);
+	uint16_t * unicode = malloc((len * 2) + 4); // we use UTF-16 internally, so do this
+	utf8toutf16l(text, unicode, len);
+	fs_node_t * node = fs_path2node(rootfs, unicode);
+	if (!node) {
+		printf(u"couldnt find %s??\n", unicode);
+		node = fs_path_touch(rootfs, unicode);
+	}
+	if (!node) {
+		regs->eax = -1;
+		free(unicode);
+		return;
+	}
+
+	fd_file_t * fd = (fd_file_t *) create_fd(FD_FILE, file_write_fd, file_read_fd);
+	if (!fd) {
+		regs->eax = -1;
+		free(unicode);
+		return;
+	}
+	fd->node = node;
+	regs->eax = fd->number;
+	free(unicode);
+}
+
+void creat_linux_syscall(registers_t * regs) {
+	char * text = (char *) regs->ebx;
+	int len = strlen(text);
+	uint16_t * unicode = malloc((len * 2) + 4); // we use UTF-16 internally, so do this
+	utf8toutf16l(text, unicode, len);
+	fs_node_t * node = fs_path_touch(rootfs, unicode);
+	if (!node) {
+		regs->eax = -1;
+		free(unicode);
+		return;
+	}
+
+	fd_file_t * fd = (fd_file_t *) create_fd(FD_FILE, file_write_fd, file_read_fd);
+	if (!fd) {
+		regs->eax = -1;
+		free(unicode);
+		return;
+	}
+	fd->node = node;
+	regs->eax = fd->number;
+	free(unicode);
 }
 
 void getpid_linux_syscall(registers_t * regs) {
@@ -172,7 +246,7 @@ void lctl_linux_syscall(registers_t * regs) {
 			spec->fb = root_window.fb;
 			spec->width = root_window.size.width;
 			spec->height = root_window.size.height;
-			spec->bpp = 32;
+			spec->bpp = root_window.bpp;
 			regs->eax = (uint32_t) spec;
 			return;
 		case LCTL_TIMER_SET_FREQUENCY:
@@ -261,6 +335,9 @@ void lctl_linux_syscall(registers_t * regs) {
         case LCTL_GPU_GETCAP: {
 			return;
 		}
+        case LCTL_GPU_TRANSFER: {
+			return;
+		}
 	}
 }
 
@@ -282,6 +359,14 @@ int socket_write_fd(fd_t * fd, void * buffer, uint32_t size) {
 	return size;
 }
 
+int socket_read_fd(fd_t * fd, void * buffer, uint32_t size) {
+	if (fd->type != FD_SOCKET) {
+		return -1;
+	}
+	fd_socket_t * sockfd = (fd_socket_t *) fd;
+	return -1;
+}
+
 void socket_linux_syscall(registers_t * regs) {
 	if (regs->ebx != AF_INET || regs->edx != 0) {
 		regs->eax = -1; // we only support IPv4 protocol
@@ -289,7 +374,7 @@ void socket_linux_syscall(registers_t * regs) {
 	}
 	switch (regs->ecx) {
 		case SOCK_DGRAM:
-			fd_socket_t * fd = (fd_socket_t *) create_fd(FD_SOCKET, socket_write_fd);
+			fd_socket_t * fd = (fd_socket_t *) create_fd(FD_SOCKET, socket_write_fd, socket_read_fd);
 			if (!fd) {
 				regs->eax = -1;
 				return;
@@ -465,7 +550,6 @@ void prctl_linux_syscall(registers_t * regs) {
 			stdout_handler_t handler = (stdout_handler_t) regs->esi;
 			stdout_constructor_t constructor = (stdout_constructor_t) regs->edi;
 			process_t * process = multitasking_get_pid(pid);
-			// printf(u"hooking: %s\n", process->name);
 			hook_stdout(process, handler, constructor);
 			return;
 		}
@@ -535,13 +619,17 @@ void free_linux_syscall(registers_t * regs) {
 }
 
 static personality_t personality = {
-	PERSONALITY_LINUX, u"Linux", 23,
+	PERSONALITY_LINUX, u"Linux", 26,
 	{
 		{SYSCALL_LINUX_NOTHING,			do_nothing_linux_syscall}, // non standard
 		{SYSCALL_LINUX_EXIT,			exit_linux_syscall},
 		{SYSCALL_LINUX_FORK,			fork_linux_syscall},
 		{SYSCALL_LINUX_READ,			read_linux_syscall},
 		{SYSCALL_LINUX_WRITE,			write_linux_syscall},
+		{SYSCALL_LINUX_OPEN,			open_linux_syscall},
+
+		{SYSCALL_LINUX_CREAT,			creat_linux_syscall},
+
 		{SYSCALL_LINUX_GETPID,			getpid_linux_syscall},
 		{SYSCALL_LINUX_UNAME,			uname_linux_syscall},
 		{SYSCALL_LINUX_GETTHERM,		gettherm_linux_syscall}, // non standard

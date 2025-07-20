@@ -35,6 +35,8 @@ void syscall_handler(registers_t * regs) {
 }
 
 void init_syscall() {
+	// move syscall handler to fixed address, this lets us do `call 0x600` instead of
+	// an expensive `int 0x80`
 	memcpy32((void *) 0x600, (void *) fast_syscall, 32);
 	irq_set_handler(128, syscall_handler);
 }

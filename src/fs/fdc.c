@@ -16,7 +16,7 @@
 
 static volatile int irq_recieved = 0;
 static int fdc_port = FDC_PORT;
-static int drives[2];
+static int floppy_drives[2];
 static int selected;
 
 void fdc_irq(registers_t * regs) {
@@ -56,7 +56,7 @@ void fdc_select(int disk) {
 		return;
 	}
 	fdc_outb(FDC_PORT_OUT, 0x0c | disk);
-	fdc_outb(FDC_PORT_CONF, fdc_datarate(drives[disk]));
+	fdc_outb(FDC_PORT_CONF, fdc_datarate(floppy_drives[disk]));
 	selected = disk;
 }
 
@@ -69,7 +69,7 @@ int fdc_arbitrary(int disk, int cylinder, int head, int sector, int direction, v
 	if (fdc_seek(disk, cylinder, 1)) {
 		return 1;
 	}
-	int type = drives[disk];
+	int type = floppy_drives[disk];
 	int sectors = fdc_tracksectors(type);
 	if (direction == FDC_CMD_WRITE) {
 		memcpy((void *) FDC_DMA, buffer, count);
@@ -117,7 +117,7 @@ int fdc_sector(int disk, int cylinder, int head, int sector, int direction, void
 	if (fdc_seek(disk, cylinder, 1)) {
 		return 1;
 	}
-	int type = drives[disk];
+	int type = floppy_drives[disk];
 	int sectors = fdc_tracksectors(type);
 	if (direction == FDC_CMD_WRITE) {
 		memcpy((void *) FDC_DMA, buffer, FDC_SECTOR_SIZE);
@@ -165,7 +165,7 @@ int fdc_track(int disk, int cylinder, int head, int direction, void * buffer) {
 	if (fdc_seek(disk, cylinder, 1)) {
 		return 1;
 	}
-	int type = drives[disk];
+	int type = floppy_drives[disk];
 	int sectors = fdc_tracksectors(type);
 	int tracklen = sectors * FDC_SECTOR_SIZE;
 	if (direction == FDC_CMD_WRITE) {
@@ -206,7 +206,7 @@ int fdc_track(int disk, int cylinder, int head, int direction, void * buffer) {
 }
 
 int fdc_disk_read(int disk, int cylinder, int head, int sector, void * buffer, size_t size) {
-	int type = drives[disk];
+	int type = floppy_drives[disk];
 	int sectors = fdc_tracksectors(type);
 	int tracklen = sectors * FDC_SECTOR_SIZE;
 	if (size < tracklen) { // we can read a whole track or sector easily
@@ -230,7 +230,7 @@ int fdc_disk_read(int disk, int cylinder, int head, int sector, void * buffer, s
 }
 
 int fdc_disk_write(int disk, int cylinder, int head, int sector, void * buffer, size_t size) {
-	int type = drives[disk];
+	int type = floppy_drives[disk];
 	int sectors = fdc_tracksectors(type);
 	int tracklen = sectors * FDC_SECTOR_SIZE;
 	if (size < tracklen) { // if its smaller than a track we can just do this, shrimple!
@@ -265,10 +265,10 @@ int fdc_disk_write(int disk, int cylinder, int head, int sector, void * buffer, 
 // lol
 void fdc_perpendiculate() {
 	uint8_t disks = 0;
-	if (drives[0] == FDC_2_88MB) {
+	if (floppy_drives[0] == FDC_2_88MB) {
 		disks |= 0b00001;
 	}
-	if (drives[1] == FDC_2_88MB) {
+	if (floppy_drives[1] == FDC_2_88MB) {
 		disks |= 0b00010;
 	}
 	fdc_cmd(FDC_CMD_PERPENDICULAR);
@@ -290,7 +290,7 @@ int fdc_reset(int disks) {
 		fdc_select(i);
 		calibrate_status = fdc_calibrate(i);
 		if (calibrate_status) {
-			drives[i] = 0;
+			floppy_drives[i] = 0;
 		}
 		ret += calibrate_status;
 	}
@@ -423,18 +423,40 @@ int fdc_tracksectors(int type) {
 	}
 }
 
+uint16_t * fdc_disk_name(int type) {
+	switch (type) {
+		case FDC_NONE:
+			return u"[EMPTY DRIVE]"; // dumbass
+		case FDC_2_88MB:
+			return u"2.88MB DS ED disk";
+		case FDC_1_44MB:
+			return u"1.44MB HD disk";
+		case FDC_1_2MB:
+			return u"1.20MB HD disk";
+		case FDC_720KB:
+			return u"720KB DS DD disk";
+		case FDC_360KB:
+			return u"360KB SS DD disk";
+	}
+}
+
 void fdc_init() {
 	uint8_t floppy = cmos_read_register(CMOS_FLOPPY);
 	if (floppy == 0) {
 		return;
 	}
 	irq_set_handler(FDC_IRQ, fdc_irq);
-	drives[0] = floppy >> 4;
-	drives[1] = floppy & 0x0f;
+	floppy_drives[0] = floppy >> 4;
+	floppy_drives[1] = floppy & 0x0f;
 	fdc_reset(1);
 	fdc_calibrate(0);
+	if (floppy_drives[0]) {
+		printf(u"FDC: detected %s\n", fdc_disk_name(floppy_drives[0]));
+	}
+	if (floppy_drives[1]) {
+		printf(u"FDC: detected %s\n", fdc_disk_name(floppy_drives[1]));
+	}
 
-	char sector[512];
-	fdc_sector(0, 0, 0, 1, FDC_CMD_READ, sector);
-	printf(u"Sector 1: %8\n", sector);
+	fdc_track(0, 0, 0, FDC_CMD_READ, (void *) FDC_DMA);
+	//printf(u"Sector 1: %8\n", sector);
 }
